@@ -2,45 +2,47 @@ import re
 
 
 class Client:
-
     def __init__(self, client_id, name, type_of_property, address, phone):
-        self.__client_id = Client.valid_client_id(client_id)
-        self.__name = Client.valid_client_name(name)
-        self.__type_of_property = Client.valid_type_of_property(type_of_property)
-        self.__address = Client.valid_address(address)
-        self.__phone = Client.valid_phone(phone)
+        self.client_id = client_id
+        self.name = name
+        self.type_of_property = type_of_property
+        self.address = address
+        self.phone = phone
 
+    @property
+    def client_id(self):
+        return self._client_id
+    @client_id.setter
+    def client_id(self, value):
+        self._client_id = Client.valid_client_id(value)
 
+    @property
+    def name(self):
+        return self._name
+    @name.setter
+    def name(self, value):
+        self._name = Client.valid_client_name(value)
 
-    def get_client_id(self):
-        return self.__client_id
+    @property
+    def type_of_property(self):
+        return self._type_of_property
+    @type_of_property.setter
+    def type_of_property(self, value):
+        self._type_of_property = Client.valid_type_of_property(value)
 
-    def set_client_id(self, client_id):
-        self.__client_id = Client.valid_client_id(client_id)
+    @property
+    def address(self):
+        return self._address
+    @address.setter
+    def address(self, value):
+        self._address = Client.valid_address(value)
 
-    def get_name(self):
-        return self.__name
-
-    def set_name(self, name):
-        self.__name = Client.valid_client_name(name)
-
-    def get_type_of_property(self):
-        return self.__type_of_property
-
-    def set_type_of_property(self, type_of_property):
-        self.__type_of_property = Client.valid_type_of_property(type_of_property)
-
-    def get_address(self):
-        return self.__address
-
-    def set_address(self, address):
-        self.__address = Client.valid_address(address)
-
-    def get_phone(self):
-        return self.__phone
-
-    def set_phone(self, phone):
-        self.__phone = Client.valid_phone(phone)
+    @property
+    def phone(self):
+        return self._phone
+    @phone.setter
+    def phone(self, value):
+        self._phone = Client.valid_phone(value)
 
 
 
@@ -101,10 +103,8 @@ class Client:
 
 
 
-
-
 try:
     c = Client(1,'    dede   ',"ООО zao","kalinina","89899993678")
-    print(c.get_phone())
+    print(c.address)
 except ValueError as e:
     print("Ошибка:", e)
