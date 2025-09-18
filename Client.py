@@ -117,6 +117,18 @@ class Client:
 
         return phone
 
+    def __str__(self):
+        return f"{self.name} - {self.type_of_property}"
+
+    def __repr__(self):
+        return f"Client(ID - {self.client_id}, Name - {self.name}, Type of property -  {self.type_of_property}, Address - {self.address}, Phone number - {self.phone})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Client):
+            return False
+        return (self.client_id == other.client_id and self.name == other.name and
+                self.type_of_property == other.type_of_property and self.address == other.address
+                and self.phone == other.phone)
 
 
 try:
@@ -133,6 +145,13 @@ try:
     print(c2.name)
     print(c2.type_of_property)
     print(c2.address)
+
+    print(c2)
+    print(repr(c2))
+
+    print(c1 == c2)
+    c3 = c1
+    print(c1 == c3)
 except ValueError as e:
     print("Ошибка:", e)
 except TypeError as e:
