@@ -1,13 +1,22 @@
 import re
+import json
 
 
 class Client:
-    def __init__(self, client_id, name, type_of_property, address, phone):
-        self.client_id = client_id
-        self.name = name
-        self.type_of_property = type_of_property
-        self.address = address
-        self.phone = phone
+    def __init__(self, data, name=None, type_of_property=None, address=None, phone=None):
+        if isinstance(data, int):
+            self.client_id = data
+            self.name = name
+            self.type_of_property = type_of_property
+            self.address = address
+            self.phone = phone
+        elif isinstance(data, dict):
+            self.__init__(data['client_id'], data['name'], data['type_of_property'], data['address'], data['phone'])
+        elif isinstance(data, str):
+            str_split = data.split(';')
+            self.__init__(int(str_split[0]), str_split[1], str_split[2], str_split[3], str_split[4])
+
+
 
     @property
     def client_id(self):
@@ -57,8 +66,15 @@ class Client:
     @staticmethod
     def valid_client_name(name):
         name = name.strip()
+        array_fio = name.split(' ')
         if name == '':
-            raise ValueError("Строка имени должна быть непустой")
+            raise ValueError("Строка ФИО должна быть непустой")
+        if len(array_fio) != 3:
+            raise ValueError("ФИО должно быть разделено пробелами")
+        for fio in array_fio:
+            if fio != fio.capitalize():
+                raise ValueError("Каждая  часть ФИО должна начинаться с заглавной буквы")
+
         return name
 
     @staticmethod
@@ -104,7 +120,20 @@ class Client:
 
 
 try:
-    c = Client(1,'    dede   ',"ООО zao","kalinina","89899993678")
-    print(c.address)
+    with open('./resources/ex.json', 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    c1 = Client(data)
+    print(c1.client_id)
+    print(c1.name)
+    print(c1.type_of_property)
+    print(c1.address)
+
+    c2 = Client('0;Хрущёв Никита Сергеевич;ИП Кукурузка;с. Кузькина Мать;79993215566')
+    print(c2.client_id)
+    print(c2.name)
+    print(c2.type_of_property)
+    print(c2.address)
 except ValueError as e:
     print("Ошибка:", e)
+except TypeError as e:
+    print("Ошибка типа:", e)
