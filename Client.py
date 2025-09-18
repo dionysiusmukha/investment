@@ -2,6 +2,7 @@ import re
 import json
 
 
+
 class Client:
     def __init__(self, data, name=None, type_of_property=None, address=None, phone=None):
         if isinstance(data, int):
@@ -131,6 +132,17 @@ class Client:
                 and self.phone == other.phone)
 
 
+class ClientShort:
+    def __init__(self, client):
+        self.type_of_property = client.type_of_property
+        self.short_name = client.name.split(' ')
+        self.shortname = self.short_name[0] + ' ' + self.short_name[1][0] + '.' + ' ' + self.short_name[2][0] + '.'
+
+    def __str__(self):
+        return f"{self.shortname} - {self.type_of_property}"
+
+
+
 try:
     with open('./resources/ex.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -152,6 +164,9 @@ try:
     print(c1 == c2)
     c3 = c1
     print(c1 == c3)
+
+    c4 = ClientShort(c3)
+    print(c4)
 except ValueError as e:
     print("Ошибка:", e)
 except TypeError as e:
