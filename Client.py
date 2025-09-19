@@ -3,66 +3,35 @@ import json
 
 
 
-class Client:
-    def __init__(self, data, name=None, type_of_property=None, address=None, phone=None):
-        if isinstance(data, int):
-            self.client_id = data
-            self.name = name
-            self.type_of_property = type_of_property
-            self.address = address
-            self.phone = phone
-        elif isinstance(data, dict):
-            self.__init__(data['client_id'], data['name'], data['type_of_property'], data['address'], data['phone'])
-        elif isinstance(data, str):
-            str_split = data.split(';')
-            self.__init__(int(str_split[0]), str_split[1], str_split[2], str_split[3], str_split[4])
-
-
-
-    @property
-    def client_id(self):
-        return self._client_id
-    @client_id.setter
-    def client_id(self, value):
-        self._client_id = Client.valid_client_id(value)
+class BaseClient:
+    def __init__(self, name, type_of_property, phone):
+        self.name = name
+        self.type_of_property = type_of_property
+        self.phone = phone
 
     @property
     def name(self):
         return self._name
+
     @name.setter
     def name(self, value):
-        self._name = Client.valid_client_name(value)
+        self._name = BaseClient.valid_client_name(value)
 
     @property
     def type_of_property(self):
         return self._type_of_property
+
     @type_of_property.setter
     def type_of_property(self, value):
-        self._type_of_property = Client.valid_type_of_property(value)
-
-    @property
-    def address(self):
-        return self._address
-    @address.setter
-    def address(self, value):
-        self._address = Client.valid_address(value)
+        self._type_of_property = BaseClient.valid_type_of_property(value)
 
     @property
     def phone(self):
         return self._phone
+
     @phone.setter
     def phone(self, value):
-        self._phone = Client.valid_phone(value)
-
-
-
-    @staticmethod
-    def valid_client_id(client_id):
-        if not isinstance(client_id, int):
-            raise ValueError("ID клиента должно быть целым числом")
-        if client_id < 0:
-            raise ValueError("ID клиента должен быть >= 0")
-        return client_id
+        self._phone = BaseClient.valid_phone(value)
 
     @staticmethod
     def valid_client_name(name):
@@ -70,7 +39,7 @@ class Client:
         array_fio = name.split(' ')
         if name == '':
             raise ValueError("Строка ФИО должна быть непустой")
-        if len(array_fio) != 3:
+        if len(array_fio) not in [2,3]:
             raise ValueError("ФИО должно быть разделено пробелами")
         for fio in array_fio:
             if fio != fio.capitalize():
@@ -92,12 +61,6 @@ class Client:
         return type_of_property
 
     @staticmethod
-    def valid_address(address):
-        if address == '':
-            raise ValueError("Строка адресса должна быть не пустой")
-        return address
-
-    @staticmethod
     def valid_phone(phone):
         if phone == '':
             raise ValueError("Строка номера телефона должна быть не пустой")
@@ -115,8 +78,55 @@ class Client:
         if len(phone) == 10:
             phone = '7' + phone
 
-
         return phone
+
+
+
+class Client(BaseClient):
+    def __init__(self, data, name=None, type_of_property=None, address=None, phone=None):
+        if isinstance(data, int):
+            super().__init__(name, type_of_property, phone)
+            self.client_id = data
+            self.address = address
+        elif isinstance(data, dict):
+            self.__init__(data['client_id'], data['name'], data['type_of_property'], data['address'], data['phone'])
+        elif isinstance(data, str):
+            str_split = data.split(';')
+            self.__init__(int(str_split[0]), str_split[1], str_split[2], str_split[3], str_split[4])
+
+
+
+    @property
+    def client_id(self):
+        return self._client_id
+    @client_id.setter
+    def client_id(self, value):
+        self._client_id = Client.valid_client_id(value)
+
+    @property
+    def address(self):
+        return self._address
+
+    @address.setter
+    def address(self, value):
+        self._address = Client.valid_address(value)
+
+
+    @staticmethod
+    def valid_client_id(client_id):
+        if not isinstance(client_id, int):
+            raise ValueError("ID клиента должно быть целым числом")
+        if client_id < 0:
+            raise ValueError("ID клиента должен быть >= 0")
+        return client_id
+
+
+
+    @staticmethod
+    def valid_address(address):
+        if address == '':
+            raise ValueError("Строка адресса должна быть не пустой")
+        return address
 
     def __str__(self):
         return f"{self.name} - {self.type_of_property}"
@@ -132,14 +142,22 @@ class Client:
                 and self.phone == other.phone)
 
 
-class ClientShort:
-    def __init__(self, client):
-        self.type_of_property = client.type_of_property
-        self.short_name = client.name.split(' ')
-        self.shortname = self.short_name[0] + ' ' + self.short_name[1][0] + '.' + ' ' + self.short_name[2][0] + '.'
 
+
+class ClientShort(BaseClient):
+    def __init__(self, client):
+        self.short_name = self.make_short_name(client.name)
+        super().__init__(self.short_name, client.type_of_property, client.phone)
+
+    def make_short_name(self,name):
+        short_name = name.strip().split()
+        if len(short_name) == 2:
+            return f'{short_name[0]} {short_name[1][0]}'
+        if len(short_name) == 3:
+            return f'{short_name[0]} {short_name[1][0]}. {short_name[2][0]}.'
+        return short_name
     def __str__(self):
-        return f"{self.shortname} - {self.type_of_property}"
+        return f"{self.short_name} - {self.type_of_property} - {self.phone}"
 
 
 
@@ -167,6 +185,7 @@ try:
 
     c4 = ClientShort(c3)
     print(c4)
+
 except ValueError as e:
     print("Ошибка:", e)
 except TypeError as e:
