@@ -80,6 +80,19 @@ class BaseClient:
 
         return phone
 
+    def __str__(self):
+        return f"{self.name} - {self.type_of_property}"
+
+    def __repr__(self):
+        return f"Name - {self.name}, Type of property -  {self.type_of_property}, Phone number - {self.phone})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Client):
+            return False
+        return (self.name == other.name and
+                self.type_of_property == other.type_of_property
+                and self.phone == other.phone)
+
 
 
 class Client(BaseClient):
@@ -128,8 +141,6 @@ class Client(BaseClient):
             raise ValueError("Строка адресса должна быть не пустой")
         return address
 
-    def __str__(self):
-        return f"{self.name} - {self.type_of_property}"
 
     def __repr__(self):
         return f"Client(ID - {self.client_id}, Name - {self.name}, Type of property -  {self.type_of_property}, Address - {self.address}, Phone number - {self.phone})"
