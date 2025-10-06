@@ -1,6 +1,6 @@
 import re
 import json
-
+from typing import List
 
 
 class BaseClient:
@@ -42,8 +42,10 @@ class BaseClient:
         if len(array_fio) not in [2,3]:
             raise ValueError("ФИО должно быть разделено пробелами")
         for fio in array_fio:
-            if fio != fio.capitalize():
-                raise ValueError("Каждая  часть ФИО должна начинаться с заглавной буквы")
+            if not fio[0].isupper():
+                raise ValueError("Каждая часть ФИО должна начинаться с заглавной буквы")
+            if not re.fullmatch(r"[А-ЯЁ][а-яё]*(?:-[А-ЯЁ][а-яё]*)?\.?", fio):
+                raise ValueError("ФИО должно состоять только из букв, дефисов и точек")
 
         return name
 
@@ -65,6 +67,8 @@ class BaseClient:
         if phone == '':
             raise ValueError("Строка номера телефона должна быть не пустой")
 
+        if len(phone) > 12:
+            raise ValueError("Телефон должен содержать не больше 12 знаков")
         pattern = re.compile(r'[+]?[7|8]?\d{10,11}')
         if not re.match(pattern, phone):
             raise ValueError("Неправильный формат телефона")
@@ -124,7 +128,6 @@ class Client(BaseClient):
     def address(self, value):
         self._address = Client.valid_address(value)
 
-
     @staticmethod
     def valid_client_id(client_id):
         if not isinstance(client_id, int):
@@ -171,31 +174,101 @@ class ClientShort(BaseClient):
         return f"{self.short_name} - {self.type_of_property} - {self.phone}"
 
 
+class MyEntity_rep_json:
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.clients: List[Client] = []
+        self.read_all()
+
+    def read_all(self) -> List[Client]:
+        try:
+            with open(self.filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.clients = []
+            return self.clients
+
+        if not isinstance(data, list):
+            raise ValueError("JSON должен содержать список объектов (list)")
+
+        loaded = []
+        for item in data:
+            if not isinstance(item, dict):
+                raise ValueError("Каждый элемент JSON должен быть словарём (dict)")
+            loaded.append(Client(item))
+        self.clients = loaded
+        return self.clients
+
+    def write_all(self, file_to_write: str = None) -> None:
+       data_to_write = []
+       for client in self.clients:
+           data_to_write.append(
+               {
+                   "client_id": client.client_id,
+                   "name": client.name,
+                   "type_of_property": client.type_of_property,
+                   "address": client.address,
+                   "phone": client.phone
+               })
+       filename = file_to_write if file_to_write else self.filename
+       with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data_to_write, f, ensure_ascii=False, indent=4)
+
+    def get_by_id(self, client_id: int) -> Client | None:
+        for client in self.clients:
+            if client.client_id == client_id:
+                return client
+        return None
+
+    def get_k_n_short_list(self, k: int, n: int) -> list[ClientShort] | None:
+        if not(k > 0 and n > 0):
+            return None
+        start = k * (n-1)
+        end = k * n
+        selected_clients = self.clients[start:end]
+        short_list = [ClientShort(client) for client in selected_clients]
+
+        return short_list
+
+    def sort_by_name(self, reverse: bool = False) -> None:
+        self.clients.sort(key=lambda client: client.name, reverse=reverse)
+
+    def add_client(self, client: Client) -> None:
+        if not self.clients:
+            new_id = 1
+        else:
+            new_id = max(c.client_id for c in self.clients) + 1
+        client.client_id = new_id
+        self.clients.append(client)
+
+    def replace_client(self, client_id: int, new_client: Client) -> None:
+        client = client_id - 1
+        for i, c in enumerate(self.clients):
+            if c.client_id == client_id:
+                new_client.client_id = c.client_id
+                self.clients[i] = new_client
+                return
+        raise ValueError(f"Клиент с ID {client_id} не найден")
+
+    def delete_client(self, client_id: int) -> None:
+        client_id = client_id - 1
+        for c in self.clients:
+            if c.client_id == client_id:
+                del self.clients[client_id]
+                return
+        raise ValueError(f"Клиент с ID{client_id} не найден")
+
+    def get_count(self) -> int:
+        return len(self.clients)
+
 
 try:
-    with open('./resources/ex.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    c1 = Client(data)
-    print(c1.client_id)
-    print(c1.name)
-    print(c1.type_of_property)
-    print(c1.address)
+    # with open('resources/clients.json', 'r', encoding='utf-8') as f:
+    #     data = json.load(f)
+    m = MyEntity_rep_json('resources/clients.json')
+    print(m.read_all())
 
-    c2 = Client('0;Хрущёв Никита Сергеевич;ИП Кукурузка;с. Кузькина Мать;79993215566')
-    print(c2.client_id)
-    print(c2.name)
-    print(c2.type_of_property)
-    print(c2.address)
 
-    print(c2)
-    print(repr(c2))
-
-    print(c1 == c2)
-    c3 = c1
-    print(c1 == c3)
-
-    c4 = ClientShort(c3)
-    print(c4)
 
 except ValueError as e:
     print("Ошибка:", e)
