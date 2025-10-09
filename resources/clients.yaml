@@ -1,0 +1,10 @@
+- address: Москва, ул. Ленина, 10
+  client_id: 1
+  name: Тургенев Иван Сергеевич
+  phone: '79991233317'
+  type_of_property: ООО Муму
+- address: г. Тула, пр. Ленина, 22
+  client_id: 2
+  name: Иванов Сергей Николаевич
+  phone: '79991112233'
+  type_of_property: ИП Иванов

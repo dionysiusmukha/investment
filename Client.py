@@ -1,5 +1,6 @@
 import re
 import json
+import yaml
 from typing import List
 
 
@@ -242,7 +243,6 @@ class MyEntity_rep_json:
         self.clients.append(client)
 
     def replace_client(self, client_id: int, new_client: Client) -> None:
-        client = client_id - 1
         for i, c in enumerate(self.clients):
             if c.client_id == client_id:
                 new_client.client_id = c.client_id
@@ -251,7 +251,6 @@ class MyEntity_rep_json:
         raise ValueError(f"Клиент с ID {client_id} не найден")
 
     def delete_client(self, client_id: int) -> None:
-        client_id = client_id - 1
         for c in self.clients:
             if c.client_id == client_id:
                 del self.clients[client_id]
@@ -261,12 +260,104 @@ class MyEntity_rep_json:
     def get_count(self) -> int:
         return len(self.clients)
 
+class MyEntity_rep_yaml:
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.clients: List[Client] = []
+        self.read_all()
+
+    def read_all(self) -> List[Client]:
+        try:
+            with open(self.filename, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+        except (FileNotFoundError, yaml.YAMLError):
+            print('Файл не удалось открыть')
+            self.clients = []
+            return self.clients
+
+        if not data:
+            self.clients = []
+            return self.clients
+
+        loaded = []
+        for item in data:
+            c = Client(item)
+            loaded.append(c)
+        self.clients = loaded
+        return self.clients
+
+    def write_all(self, file_to_write: str = None) -> None:
+        data_to_write = []
+        for client in self.clients:
+            data_to_write.append({
+                'client_id': client.client_id,
+                'name': client.name,
+                'type_of_property': client.type_of_property,
+                'address': client.address,
+                'phone': client.phone
+            })
+
+        filename = file_to_write if file_to_write else self.filename
+        with open(self.filename, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(data_to_write, f, default_flow_style=False, allow_unicode=True)
+
+    def get_by_id(self, client_id: int) -> Client | None:
+        for client in self.clients:
+            if client_id == client.client_id:
+                return client
+        return None
+
+    def get_k_n_short_list(self, k: int, n: int) -> List[ClientShort] | None:
+        if k <= 0 or n <= 0:
+            return None
+
+        start = k * (n-1)
+        end = n * k
+        list_of_clients = self.clients[start:end]
+        res_list = [ClientShort(c) for c in list_of_clients]
+
+        return res_list
+
+    def sort_by_name(self, reverse=False) -> None:
+        self.clients.sort(key=lambda client: client.name, reverse=reverse)
+
+    def add_client(self, client: Client) -> None:
+        if not self.clients:
+            new_id = 1
+        else:
+            new_id = max(c.client_id for c in self.clients)
+        client.client_id = new_id
+        self.clients.append(client)
+        return None
+
+    def replace_client(self, client_id: int, new_client: Client) -> None:
+        for i, c in enumerate(self.clients):
+            if c.client_id == client_id:
+                new_client.client_id = c.client_id
+                self.clients[i] = new_client
+                return
+        raise ValueError(f"Клиент с ID {client_id} не найден")
+
+    def delete_client(self, client_id: int) -> None:
+        for i, c in enumerate(self.clients):
+            if c.client_id == client_id:
+                self.clients.remove(c)
+                return
+        raise ValueError(f"Клиент с ID {client_id} не найден")
+
+    def get_count(self) -> int:
+        return len(self.clients)
+
+
+
+
+
 
 try:
     # with open('resources/clients.json', 'r', encoding='utf-8') as f:
     #     data = json.load(f)
-    m = MyEntity_rep_json('resources/clients.json')
-    print(m.read_all())
+    m = MyEntity_rep_yaml('./resources/clients.yaml')
+
 
 
 
