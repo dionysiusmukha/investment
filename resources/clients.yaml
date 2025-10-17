@@ -3,8 +3,98 @@
   name: Тургенев Иван Сергеевич
   phone: '79991233317'
   type_of_property: ООО Муму
-- address: г. Тула, пр. Ленина, 22
+- address: г. Москва
   client_id: 2
+  name: Конев Иван Степанович
+  phone: '79997777777'
+  type_of_property: ЗАО Ставка ВГК
+- address: г. Тула, пр. Ленина, 22
+  client_id: 3
   name: Иванов Сергей Николаевич
   phone: '79991112233'
   type_of_property: ИП Иванов
+- address: г. Екатеринбург, ул. Победы, 45
+  client_id: 4
+  name: Сидоров Алексей Павлович
+  phone: '79992233445'
+  type_of_property: ООО Альфа
+- address: г. Казань, ул. Гагарина, 8
+  client_id: 5
+  name: Кузнецова Анна Викторовна
+  phone: '79993335566'
+  type_of_property: ЗАО Вектор
+- address: г. Челябинск, ул. Кирова, 12
+  client_id: 6
+  name: Морозов Дмитрий Иванович
+  phone: '79994446677'
+  type_of_property: ОАО МеталлИнвест
+- address: г. Нижний Новгород, ул. Лесная, 9
+  client_id: 7
+  name: Федорова Елена Андреевна
+  phone: '79995557788'
+  type_of_property: ООО Эдельвейс
+- address: г. Тверь, ул. Советская, 14
+  client_id: 8
+  name: Никитин Константин Петрович
+  phone: '79996668899'
+  type_of_property: ИП Никитин
+- address: г. Краснодар, ул. Северная, 3
+  client_id: 9
+  name: Алексеева Мария Олеговна
+  phone: '79997779900'
+  type_of_property: ООО Радуга
+- address: г. Омск, ул. Мира, 11
+  client_id: 10
+  name: Ковалев Виктор Сергеевич
+  phone: '79998880011'
+  type_of_property: ОАО Нефтегаз
+- address: г. Воронеж, ул. Гагарина, 7
+  client_id: 11
+  name: Романов Николай Федорович
+  phone: '79999991122'
+  type_of_property: ООО Аргус
+- address: г. Тюмень, ул. Уральская, 18
+  client_id: 12
+  name: Зайцева Полина Сергеевна
+  phone: '79990002233'
+  type_of_property: ИП Зайцева
+- address: г. Уфа, ул. Лесная, 21
+  client_id: 13
+  name: Громов Андрей Павлович
+  phone: '79991113344'
+  type_of_property: ООО Энергия
+- address: г. Киров, ул. Центральная, 30
+  client_id: 14
+  name: Егорова Дарья Алексеевна
+  phone: '79992224455'
+  type_of_property: ЗАО Городок
+- address: г. Барнаул, ул. Ленина, 15
+  client_id: 15
+  name: Волков Роман Игоревич
+  phone: '79993335544'
+  type_of_property: ОАО Прометей
+- address: г. Ярославль, ул. Победы, 16
+  client_id: 16
+  name: Беляева Ксения Николаевна
+  phone: '79994446655'
+  type_of_property: ООО Орхидея
+- address: г. Пермь, ул. Ленина, 10
+  client_id: 17
+  name: Павлов Михаил Сергеевич
+  phone: '79995557744'
+  type_of_property: ИП Павлов
+- address: г. Владивосток, ул. Океанская, 2
+  client_id: 18
+  name: Соколова Валерия Дмитриевна
+  phone: '79996668877'
+  type_of_property: ООО Планета
+- address: г. Калуга, ул. Советская, 19
+  client_id: 19
+  name: Жуков Артем Николаевич
+  phone: '79997779966'
+  type_of_property: ЗАО Восток
+- address: г. Таганрог, ул. Южная, 5
+  client_id: 20
+  name: Семенова Ольга Викторовна
+  phone: '79998880055'
+  type_of_property: ООО Кедр
