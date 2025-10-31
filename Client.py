@@ -1,8 +1,11 @@
 import re
 import json
 import yaml
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from abc import ABC, abstractmethod
 from typing import List
+
 
 
 class BaseClient:
@@ -268,7 +271,7 @@ class MyEntity_rep_yaml(MyEntityRep):
         except (FileNotFoundError, yaml.YAMLError):
             print('Файл не удалось открыть')
             self.clients = []
-            return self.clients
+            return self.clients2
         if not data:
             self.clients = []
             return self.clients
@@ -290,13 +293,114 @@ class MyEntity_rep_yaml(MyEntityRep):
             yaml.safe_dump(data_to_write, f, default_flow_style=False, allow_unicode=True)
 
 
+class MyEntity_rep_DB(MyEntityRep):
+
+    def __init__(self, dsn: str, table: str = "clients"):
+        self.dsn = dsn
+        self.table = table
+        self.clients = []
+
+    
+    def _conn(self):
+        return psycopg2.connect(self.dsn)
+
+    def read_all(self) -> List[Client]:
+        with self._conn() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(f"""
+                SELECT client_id, name, type_of_property, address, phone
+                FROM {self.table}
+                ORDER BY client_id
+            """)
+            rows = cur.fetchall()
+        return [Client(dict(r)) for r in rows]
+
+    def write_all(self, file_to_write: str = None) -> None:
+        with self._conn() as conn, conn.cursor() as cur:
+            cur.execute(f"TRUNCATE TABLE {self.table} RESTART IDENTITY")
+            for c in self.clients:
+                cur.execute(
+                    f"""INSERT INTO {self.table} (name, type_of_property, address, phone)
+                        VALUES (%s, %s, %s, %s)""",
+                    (c.name, c.type_of_property, c.address, c.phone)
+                )
+
+    def get_by_id(self, client_id: int) -> Client | None:
+        with self._conn() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                f"""SELECT client_id, name, type_of_property, address, phone
+                    FROM {self.table} WHERE client_id = %s""",
+                (client_id,)
+            )
+            row = cur.fetchone()
+        return Client(dict(row)) if row else None
+
+    def get_k_n_short_list(self, k: int, n: int) -> List[ClientShort] | None:
+        if k <= 0 or n <= 0:
+            return None
+        offset = k * (n - 1)
+        with self._conn() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                f"""SELECT client_id, name, type_of_property, address, phone
+                    FROM {self.table}
+                    ORDER BY client_id
+                    LIMIT %s OFFSET %s""",
+                (k, offset)
+            )
+            rows = cur.fetchall()
+        clients = [Client(dict(r)) for r in rows]
+        return [ClientShort(c) for c in clients]
+
+    
+    def add_client(self, client: Client) -> None:
+        with self._conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"""INSERT INTO {self.table} (name, type_of_property, address, phone)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING client_id""",
+                (client.name, client.type_of_property, client.address, client.phone)
+            )
+            new_id = cur.fetchone()[0]
+            client.client_id = new_id  
+
+
+    def replace_client(self, client_id: int, new_client: Client) -> None:
+        with self._conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"""UPDATE {self.table}
+                    SET name=%s, type_of_property=%s, address=%s, phone=%s
+                    WHERE client_id=%s""",
+                (new_client.name, new_client.type_of_property,
+                 new_client.address, new_client.phone, client_id)
+            )
+            if cur.rowcount == 0:
+                raise ValueError(f"Клиент с ID {client_id} не найден")
+
+
+    def delete_client(self, client_id: int) -> None:
+        with self._conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"DELETE FROM {self.table} WHERE client_id=%s",
+                (client_id,)
+            )
+            if cur.rowcount == 0:
+                raise ValueError(f"Клиент с ID {client_id} не найден")
+
+
+    def get_count(self) -> int:
+        with self._conn() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT COUNT(*) FROM {self.table}")
+            (cnt,) = cur.fetchone()
+        return int(cnt)
+
 
 
 
 
 try:
-    m = MyEntity_rep_yaml('./resources/clients.yaml')
-    print(m.get_by_id(20))
+    repo = MyEntity_rep_DB(
+        dsn="dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432"
+    )
+    print("count:", repo.get_count())
 except ValueError as e:
     print("Ошибка:", e)
 except TypeError as e:
