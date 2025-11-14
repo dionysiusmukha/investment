@@ -8,6 +8,8 @@ from typing import List
 
 
 
+
+
 class BaseClient:
     def __init__(self, name, type_of_property, phone):
         self.name = name
@@ -294,113 +296,130 @@ class MyEntity_rep_yaml(MyEntityRep):
 
 
 class MyEntity_rep_DB(MyEntityRep):
-
-    def __init__(self, dsn: str, table: str = "clients"):
-        self.dsn = dsn
+    def __init__(self, db: DatabaseManager, table: str = "public.clients"):
+        self.db = db                 
         self.table = table
-        self.clients = []
-
-    
-    def _conn(self):
-        return psycopg2.connect(self.dsn)
+        self.clients = []           
 
     def read_all(self) -> List[Client]:
-        with self._conn() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(f"""
-                SELECT client_id, name, type_of_property, address, phone
-                FROM {self.table}
-                ORDER BY client_id
-            """)
-            rows = cur.fetchall()
+        rows = self.db.fetch_all(
+            f"SELECT client_id, name, type_of_property, address, phone FROM {self.table} ORDER BY client_id"
+        )
         return [Client(dict(r)) for r in rows]
 
     def write_all(self, file_to_write: str = None) -> None:
-        with self._conn() as conn, conn.cursor() as cur:
-            cur.execute(f"TRUNCATE TABLE {self.table} RESTART IDENTITY")
-            for c in self.clients:
-                cur.execute(
-                    f"""INSERT INTO {self.table} (name, type_of_property, address, phone)
-                        VALUES (%s, %s, %s, %s)""",
-                    (c.name, c.type_of_property, c.address, c.phone)
-                )
+        self.db.execute(f"TRUNCATE TABLE {self.table} RESTART IDENTITY")
+        for c in self.clients:
+            self.db.execute(
+                f"INSERT INTO {self.table} (name, type_of_property, address, phone) VALUES (%s, %s, %s, %s)",
+                (c.name, c.type_of_property, c.address, c.phone)
+            )
 
     def get_by_id(self, client_id: int) -> Client | None:
-        with self._conn() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                f"""SELECT client_id, name, type_of_property, address, phone
-                    FROM {self.table} WHERE client_id = %s""",
-                (client_id,)
-            )
-            row = cur.fetchone()
+        if client_id <= 0:
+            return None
+        row = self.db.fetch_one(
+            f"SELECT client_id, name, type_of_property, address, phone FROM {self.table} WHERE client_id = %s",
+            (client_id,)
+        )
         return Client(dict(row)) if row else None
 
     def get_k_n_short_list(self, k: int, n: int) -> List[ClientShort] | None:
         if k <= 0 or n <= 0:
             return None
         offset = k * (n - 1)
-        with self._conn() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                f"""SELECT client_id, name, type_of_property, address, phone
-                    FROM {self.table}
-                    ORDER BY client_id
-                    LIMIT %s OFFSET %s""",
-                (k, offset)
-            )
-            rows = cur.fetchall()
-        clients = [Client(dict(r)) for r in rows]
-        return [ClientShort(c) for c in clients]
+        rows = self.db.fetch_all(
+            f"SELECT client_id, name, type_of_property, address, phone FROM {self.table} ORDER BY client_id LIMIT %s OFFSET %s",
+            (k, offset)
+        )
+        return [ClientShort(Client(dict(r))) for r in rows]
 
-    
     def add_client(self, client: Client) -> None:
-        with self._conn() as conn, conn.cursor() as cur:
-            cur.execute(
-                f"""INSERT INTO {self.table} (name, type_of_property, address, phone)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING client_id""",
-                (client.name, client.type_of_property, client.address, client.phone)
-            )
-            new_id = cur.fetchone()[0]
-            client.client_id = new_id  
-
+        row = self.db.execute_returning_one(
+            f"INSERT INTO {self.table} (name, type_of_property, address, phone) VALUES (%s, %s, %s, %s) RETURNING client_id",
+            (client.name, client.type_of_property, client.address, client.phone)
+        )
+        client.client_id = row["client_id"]
 
     def replace_client(self, client_id: int, new_client: Client) -> None:
-        with self._conn() as conn, conn.cursor() as cur:
-            cur.execute(
-                f"""UPDATE {self.table}
-                    SET name=%s, type_of_property=%s, address=%s, phone=%s
-                    WHERE client_id=%s""",
-                (new_client.name, new_client.type_of_property,
-                 new_client.address, new_client.phone, client_id)
-            )
-            if cur.rowcount == 0:
-                raise ValueError(f"Клиент с ID {client_id} не найден")
-
+        rc = self.db.execute(
+            f"UPDATE {self.table} SET name=%s, type_of_property=%s, address=%s, phone=%s WHERE client_id=%s",
+            (new_client.name, new_client.type_of_property, new_client.address, new_client.phone, client_id)
+        )
+        if rc == 0:
+            raise ValueError(f"Клиент с ID {client_id} не найден")
 
     def delete_client(self, client_id: int) -> None:
-        with self._conn() as conn, conn.cursor() as cur:
-            cur.execute(
-                f"DELETE FROM {self.table} WHERE client_id=%s",
-                (client_id,)
-            )
-            if cur.rowcount == 0:
-                raise ValueError(f"Клиент с ID {client_id} не найден")
-
+        rc = self.db.execute(f"DELETE FROM {self.table} WHERE client_id=%s", (client_id,))
+        if rc == 0:
+            raise ValueError(f"Клиент с ID {client_id} не найден")
 
     def get_count(self) -> int:
-        with self._conn() as conn, conn.cursor() as cur:
-            cur.execute(f"SELECT COUNT(*) FROM {self.table}")
-            (cnt,) = cur.fetchone()
-        return int(cnt)
+        row = self.db.fetch_one(f"SELECT COUNT(*) AS cnt FROM {self.table}")
+        return int(row["cnt"])
 
+
+
+
+class DatabaseManager:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            1
+        return cls._instance
+
+    def __init__(self, dsn: str, cursor_factory=RealDictCursor, autocommit=True):
+        if getattr(self, "_initialized", False):
+            return
+        self.dsn = dsn
+        self.cursor_factory = cursor_factory
+        self.autocommit = autocommit
+        self._conn = None
+        self._initialized = True
+        self._ensure_connection()
+
+    def _ensure_connection(self):
+        if self._conn is None or self._conn.closed != 0:
+            self._conn = psycopg2.connect(self.dsn)
+            self._conn.autocommit = self.autocommit
+
+    def fetch_all(self, sql, params=None):
+        self._ensure_connection()
+        with self._conn.cursor(cursor_factory=self.cursor_factory) as cur:
+            cur.execute(sql, params)
+            return cur.fetchall()
+
+    def fetch_one(self, sql, params=None):
+        self._ensure_connection()
+        with self._conn.cursor(cursor_factory=self.cursor_factory) as cur:
+            cur.execute(sql, params)
+            return cur.fetchone()
+
+    def execute(self, sql, params=None) -> int:
+        self._ensure_connection()
+        with self._conn.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.rowcount
+
+    def execute_returning_one(self, sql, params=None):
+        self._ensure_connection()
+        with self._conn.cursor(cursor_factory=self.cursor_factory) as cur:
+            cur.execute(sql, params)
+            return cur.fetchone()
+
+    def close(self):
+        if self._conn and self._conn.closed == 0:
+            self._conn.close()
 
 
 
 
 try:
-    repo = MyEntity_rep_DB(
-        dsn="dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432"
-    )
+    db = DatabaseManager("dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432")
+    repo = MyEntity_rep_DB(db)
     print("count:", repo.get_count())
+    
 except ValueError as e:
     print("Ошибка:", e)
 except TypeError as e:
