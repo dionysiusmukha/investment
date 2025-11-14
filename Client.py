@@ -362,53 +362,62 @@ class MyEntity_rep_DB(MyEntityRep):
 
 
 class DatabaseManager:
-    _instance = None
+    _instance: "DatabaseManager | None" = None
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs) -> "DatabaseManager":
         if cls._instance is None:
-            1
+            cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, dsn: str, cursor_factory=RealDictCursor, autocommit=True):
+    def __init__(self, dsn: str, 
+        cursor_factory=RealDictCursor, 
+        autocommit: bool = True) -> None:
         if getattr(self, "_initialized", False):
             return
-        self.dsn = dsn
+        self.dsn: str = dsn
         self.cursor_factory = cursor_factory
-        self.autocommit = autocommit
+        self.autocommit: bool = autocommit
         self._conn = None
-        self._initialized = True
+        self._initialized: bool = True
         self._ensure_connection()
 
-    def _ensure_connection(self):
+    def _ensure_connection(self) -> None:
         if self._conn is None or self._conn.closed != 0:
             self._conn = psycopg2.connect(self.dsn)
             self._conn.autocommit = self.autocommit
 
-    def fetch_all(self, sql, params=None):
+    def fetch_all(self, 
+        sql: str, 
+        params: tuple | list | dict | None=None) -> list[dict]:
         self._ensure_connection()
         with self._conn.cursor(cursor_factory=self.cursor_factory) as cur:
             cur.execute(sql, params)
-            return cur.fetchall()
+            rows = cur.fetch_all()
+            return rows if rows is not None else [] 
 
-    def fetch_one(self, sql, params=None):
+    def fetch_one(self, 
+        sql: str,
+        params: tuple | list | dict | None = None) -> dict | None:
         self._ensure_connection()
         with self._conn.cursor(cursor_factory=self.cursor_factory) as cur:
             cur.execute(sql, params)
             return cur.fetchone()
 
-    def execute(self, sql, params=None) -> int:
+    def execute(self, 
+        sql: str, params: tuple | list | dict | None = None) -> int:
         self._ensure_connection()
         with self._conn.cursor() as cur:
             cur.execute(sql, params)
             return cur.rowcount
 
-    def execute_returning_one(self, sql, params=None):
+    def execute_returning_one(self, 
+        sql: str, params: tuple | list | dict | None = None) -> dict | None:
         self._ensure_connection()
         with self._conn.cursor(cursor_factory=self.cursor_factory) as cur:
             cur.execute(sql, params)
             return cur.fetchone()
 
-    def close(self):
+    def close(self) -> None:
         if self._conn and self._conn.closed == 0:
             self._conn.close()
 
