@@ -4,7 +4,7 @@ import yaml
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Callable, Any, Optional
 
 
 
@@ -296,7 +296,7 @@ class MyEntity_rep_yaml(MyEntityRep):
 
 
 class MyEntity_rep_DB(MyEntityRep):
-    def __init__(self, db: DatabaseManager, table: str = "public.clients"):
+    def __init__(self, db: "DatabaseManager", table: str = "public.clients"):
         self.db = db                 
         self.table = table
         self.clients = []           
@@ -392,7 +392,7 @@ class DatabaseManager:
         self._ensure_connection()
         with self._conn.cursor(cursor_factory=self.cursor_factory) as cur:
             cur.execute(sql, params)
-            rows = cur.fetch_all()
+            rows = cur.fetchall()
             return rows if rows is not None else [] 
 
     def fetch_one(self, 
@@ -422,12 +422,100 @@ class DatabaseManager:
             self._conn.close()
 
 
+class FilteredSortedDB(MyEntityRep):
+    def __init__(
+        self,
+        base_repo: MyEntityRep,
+        filter_func: Optional[Callable[[Client], bool]] = None,
+        sort_key: Optional[Callable[[Client], Any]] = None,
+        reverse: bool = False,
+    ):
+        self._base_repo = base_repo
+        self.filter_func = filter_func
+        self.sort_key = sort_key
+        self.reverse = reverse
+        self.filename = getattr(base_repo, "filename", "")
+        self.clients: List[Client] = []
+
+    def read_all(self) -> List[Client]:
+        return self._base_repo.read_all()
+    
+    def write_all(self, file_to_write: str = None) -> None:
+        return self._base_repo.write_all(file_to_write)
+
+    def add_client(self, client: Client) -> None:
+        return self._base_repo.add_client(client)
+    
+    def replace_client(self, client_id: int, new_client: Client) -> None:
+        return self._base_repo.replace_client(client_id, new_client)
+    
+    def delete_client(self, client_id: int) -> None:
+        return self._base_repo.delete_client(client_id)
+
+    def get_by_id(self, client_id: int) -> Client | None:
+        return self._base_repo.get_by_id(client_id)
+    
+    def sort_by_name(self, reverse: bool = False) -> None:
+        if hasattr(self._base_repo, "sort_by_name"):
+            return self._base_repo.sort_by_name(reverse)
+    
+    def _get_filtered_sorted_clients(self) -> List[Client]:
+        clients = self._base_repo.read_all()
+
+        if self.filter_func is not None:
+            clients = [c for c in clients if self.filter_func(c)]
+        
+        if self.sort_key is not None:
+            clients.sort(key=self.sort_key, reverse=self.reverse)
+        
+        return clients
+    
+    def get_k_n_short_list(self, k: int, n: int) -> List[ClientShort] | None:
+        
+        if k <= 0 or n <= 0:
+            return None
+
+        clients = self._get_filtered_sorted_clients()
+
+        start = k * (n-1)
+        end = k * n
+        page = clients[start:end]
+
+        return [ClientShort(c) for c in page]
+
+    def get_count(self) -> int:
+        if self.filter_func is None and  self.sort_key is None:
+            return  self._base_repo.get_count()
+
+        clients = self._get_filtered_sorted_clients()
+        return len(clients)       
+
 
 
 try:
     db = DatabaseManager("dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432")
-    repo = MyEntity_rep_DB(db)
-    print("count:", repo.get_count())
+    base_repo = MyEntity_rep_DB(db)
+
+    def krasnodar_filter(c: Client) -> bool:
+        return "Краснодар" in c.address
+    
+    def name_key(c: Client):
+        return c.name
+    
+    decorated_repo = FilteredSortedDB(
+        base_repo,
+        filter_func=krasnodar_filter,
+        sort_key=name_key,
+        reverse=False
+    )
+
+    print("Всего клиентов в БД:", base_repo.get_count())
+    print("Клиентов из Краснодара:", decorated_repo.get_count())
+
+    page = decorated_repo.get_k_n_short_list(k=5, n=1)
+    for short in page:
+        print(short)
+
     
 except ValueError as e:
     print("Ошибка:", e)
