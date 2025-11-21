@@ -350,7 +350,6 @@ class MyEntity_rep_DB(MyEntityRep):
     def __init__(self, db: "DatabaseManager", table: str = "public.clients"):
         self.db = db
         self.table = table
-        self.clients = []
 
     def read_all(self) -> List[Client]:
         rows = self.db.fetch_all(
@@ -359,12 +358,7 @@ class MyEntity_rep_DB(MyEntityRep):
         return [Client(dict(r)) for r in rows]
 
     def write_all(self, file_to_write: str = None) -> None:
-        self.db.execute(f"TRUNCATE TABLE {self.table} RESTART IDENTITY")
-        for c in self.clients:
-            self.db.execute(
-                f"INSERT INTO {self.table} (name, type_of_property, address, phone) VALUES (%s, %s, %s, %s)",
-                (c.name, c.type_of_property, c.address, c.phone),
-            )
+        raise NotImplementedError("write_all не используется для MyEntity_rep_DB")
 
     def get_by_id(self, client_id: int) -> Client | None:
         if client_id <= 0:
@@ -620,59 +614,68 @@ class FilteredSortedFile(MyEntityRep):
 
 
 try:
+    # db = DatabaseManager(
+    #     "dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432"
+    # )
+    # base_repo = MyEntity_rep_DB(db)
+
+    # def krasnodar_filter(c: Client) -> bool:
+    #     return "Краснодар" in c.address
+
+    # def name_key(c: Client):
+    #     return c.name
+
+    # def only_ip(c: Client) -> bool:
+    #     return "ИП" in c.type_of_property
+
+    # decorated_repo = FilteredSortedDB(
+    #     base_repo, filter_func=krasnodar_filter, sort_key=name_key, reverse=False
+    # )
+
+    # print("Всего клиентов в БД:", base_repo.get_count())
+    # print("Клиентов из Краснодара:", decorated_repo.get_count())
+
+    # page = decorated_repo.get_k_n_short_list(k=5, n=1)
+    # for short in page:
+    #     print(short)
+
+    # print("------------------------------------------")
+    # json_repo = MyEntity_rep_json("resources/clients.json")
+
+    # decorated_json = FilteredSortedFile(
+    #     json_repo, filter_func=only_ip, sort_key=name_key, reverse=False
+    # )
+
+    # print("Всего клиентов в файле:", json_repo.get_count())
+    # print("Клиентов-ИП:", decorated_json.get_count())
+
+    # page = decorated_json.get_k_n_short_list(k=5, n=1)
+    # for short in page:
+    #     print(short)
+
+    # print("------------------------------------------")
+
+    # yaml_repo = MyEntity_rep_yaml("resources/clients.yaml")
+
+    # decorated_json = FilteredSortedFile(
+    #     yaml_repo, filter_func=only_ip, sort_key=name_key, reverse=False
+    # )
+
+    # print("Всего клиентов в файле:", yaml_repo.get_count())
+    # print("Клиентов-ИП:", decorated_json.get_count())
+
+    # page = decorated_json.get_k_n_short_list(k=5, n=1)
+    # for short in page:
+    #     print(short)
+
     db = DatabaseManager(
         "dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432"
     )
     base_repo = MyEntity_rep_DB(db)
-
-    def krasnodar_filter(c: Client) -> bool:
-        return "Краснодар" in c.address
-
-    def name_key(c: Client):
-        return c.name
-
-    def only_ip(c: Client) -> bool:
-        return "ИП" in c.type_of_property
-
-    decorated_repo = FilteredSortedDB(
-        base_repo, filter_func=krasnodar_filter, sort_key=name_key, reverse=False
-    )
-
-    print("Всего клиентов в БД:", base_repo.get_count())
-    print("Клиентов из Краснодара:", decorated_repo.get_count())
-
-    page = decorated_repo.get_k_n_short_list(k=5, n=1)
-    for short in page:
-        print(short)
-
-    print("------------------------------------------")
-    json_repo = MyEntity_rep_json("resources/clients.json")
-
-    decorated_json = FilteredSortedFile(
-        json_repo, filter_func=only_ip, sort_key=name_key, reverse=False
-    )
-
-    print("Всего клиентов в файле:", json_repo.get_count())
-    print("Клиентов-ИП:", decorated_json.get_count())
-
-    page = decorated_json.get_k_n_short_list(k=5, n=1)
-    for short in page:
-        print(short)
-
-    print("------------------------------------------")
-
-    yaml_repo = MyEntity_rep_yaml("resources/clients.yaml")
-
-    decorated_json = FilteredSortedFile(
-        yaml_repo, filter_func=only_ip, sort_key=name_key, reverse=False
-    )
-
-    print("Всего клиентов в файле:", yaml_repo.get_count())
-    print("Клиентов-ИП:", decorated_json.get_count())
-
-    page = decorated_json.get_k_n_short_list(k=5, n=1)
-    for short in page:
-        print(short)
+    # id, name, type_of_property, address, phone
+    client_to_add_in_db = Client('1;Дзержинский Феликс Эдмундович; ОАО ВЧК; Краснодар, Дзержинского 1;+79959003344')
+    base_repo.add_client(client_to_add_in_db)
+    print(base_repo.read_all())
 
 except ValueError as e:
     print("Ошибка:", e)
