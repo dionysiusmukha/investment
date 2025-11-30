@@ -97,9 +97,9 @@ class BaseClient:
     def __repr__(self):
         return f"Name - {self.name}, Type of property -  {self.type_of_property}, Phone number - {self.phone})"
 
-    def __eq__(self, other):
-        if not isinstance(other, Client):
-            return False
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BaseClient):
+            return NotImplemented
         return (
             self.name == other.name
             and self.type_of_property == other.type_of_property
@@ -132,6 +132,8 @@ class Client(BaseClient):
                 str_split[3],
                 str_split[4],
             )
+        else:
+            raise TypeError(f"Неподдерживаемый тип данных: {type(data)}")
 
     @property
     def client_id(self):
@@ -163,25 +165,18 @@ class Client(BaseClient):
             raise ValueError("Строка адресса должна быть не пустой")
         return address
 
-    def __repr__(self):
-        return (
-            f"Client(ID - {self.client_id}, "
-            f"Name - {self.name}, "
-            f"Type of property - {self.type_of_property}, "
-            f"Address - {self.address}, "
-            f"Phone number - {self.phone})"
-        )
-
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Client):
-            return False
+            return NotImplemented
         return (
-            self.client_id == other.client_id
-            and self.name == other.name
+            self.name == other.name
             and self.type_of_property == other.type_of_property
             and self.address == other.address
             and self.phone == other.phone
         )
+
+    def __repr__(self):
+        return f"{self.client_id} - {self.name} - {self.type_of_property} - {self.address} - {self.phone}"
 
 
 class ClientShort(BaseClient):
@@ -232,15 +227,34 @@ class MyEntityRep(ABC):
     def sort_by_name(self, reverse: bool = False) -> None:
         self.clients.sort(key=lambda client: client.name, reverse=reverse)
 
+    def _client_exists(
+        self,
+        new_client: Client,
+        ignore_id: int | None = None,
+    ) -> bool:
+        for c in self.clients:
+            if ignore_id is not None and c.client_id == ignore_id:
+                continue
+            if c == new_client:
+                return True
+        return False
+
     def add_client(self, client: Client) -> None:
+        if self._client_exists(client):
+            raise ValueError("Клиент с такими данными уже существует")
+
         if not self.clients:
             new_id = 1
         else:
             new_id = max(c.client_id for c in self.clients) + 1
+
         client.client_id = new_id
         self.clients.append(client)
 
     def replace_client(self, client_id: int, new_client: Client) -> None:
+        if self._client_exists(new_client, ignore_id=client_id):
+            raise ValueError("Клиент с такими данными уже существует")
+
         for i, c in enumerate(self.clients):
             if c.client_id == client_id:
                 new_client.client_id = c.client_id
@@ -257,6 +271,17 @@ class MyEntityRep(ABC):
 
     def get_count(self) -> int:
         return len(self.clients)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MyEntityRep):
+            return NotImplemented
+
+        self.read_all()
+        other.read_all()
+
+        self_clients = sorted(self.clients, key=lambda c: c.client_id)
+        other_clients = sorted(other.clients, key=lambda c: c.client_id)
+        return self_clients == other_clients
 
 
 class MyEntity_rep_json(MyEntityRep):
@@ -667,16 +692,13 @@ try:
     # page = decorated_json.get_k_n_short_list(k=5, n=1)
     # for short in page:
     #     print(short)
-
     db = DatabaseManager(
         "dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432"
     )
     base_repo = MyEntity_rep_DB(db)
-    # id, name, type_of_property, address, phone
-    client_to_add_in_db = Client('1;Дзержинский Феликс Эдмундович; ОАО ВЧК; Краснодар, Дзержинского 1;+79959003344')
-    base_repo.add_client(client_to_add_in_db)
-    print(base_repo.read_all())
-
+    r_client = base_repo.get_by_id()
+    r_client.address = "Г. Москва"
+    base_repo.replace_client(r_client.client_id, r_client)
 except ValueError as e:
     print("Ошибка:", e)
 except TypeError as e:
