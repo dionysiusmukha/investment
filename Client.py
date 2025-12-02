@@ -1,11 +1,17 @@
 import json
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Protocol
+
 
 import psycopg2
 import yaml
 from psycopg2.extras import RealDictCursor
+
+
+class RepoObserver(Protocol):
+    def update(self, event_type: str, data: Any | None = None) -> None:
+        pass
 
 
 class BaseClient:
@@ -181,6 +187,7 @@ class Client(BaseClient):
 
 class ClientShort(BaseClient):
     def __init__(self, client):
+        self.client_id = client.client_id
         self.short_name = self.make_short_name(client.name)
         super().__init__(self.short_name, client.type_of_property, client.phone)
 
@@ -200,7 +207,20 @@ class MyEntityRep(ABC):
     def __init__(self, filename: str):
         self.filename = filename
         self.clients: List[Client] = []
+        self._observers: list["RepoObserver"] = []
         self.read_all()
+
+    def attach(self, observer: "RepoObserver") -> None:
+        if observer not in self._observers:
+            self._observers.append(observer)
+
+    def detach(self, observer: "RepoObserver") -> None:
+        if observer in self._observers:
+            self._observers.remove(observer)
+
+    def _notify(self, event_type: str, data: Any | None = None) -> None:
+        for obs in self._observers:
+            obs.update(event_type, data)
 
     @abstractmethod
     def read_all(self) -> List[Client]:
@@ -250,6 +270,7 @@ class MyEntityRep(ABC):
 
         client.client_id = new_id
         self.clients.append(client)
+        self._notify("added", client)
 
     def replace_client(self, client_id: int, new_client: Client) -> None:
         if self._client_exists(new_client, ignore_id=client_id):
@@ -259,13 +280,15 @@ class MyEntityRep(ABC):
             if c.client_id == client_id:
                 new_client.client_id = c.client_id
                 self.clients[i] = new_client
+                self._notify("updated", new_client)
                 return
         raise ValueError(f"Клиент с ID {client_id} не найден")
 
     def delete_client(self, client_id: int) -> None:
         for i, c in enumerate(self.clients):
             if c.client_id == client_id:
-                self.clients.remove(c)
+                removed = self.clients.pop(i)
+                self._notify("deleted", removed)
                 return
         raise ValueError(f"Клиент с ID {client_id} не найден")
 
@@ -375,12 +398,18 @@ class MyEntity_rep_DB(MyEntityRep):
     def __init__(self, db: "DatabaseManager", table: str = "public.clients"):
         self.db = db
         self.table = table
+        self.filename = ""
+        self.client: List[Client] = []
+        self._observers: list["RepoObserver"] = []
 
     def read_all(self) -> List[Client]:
         rows = self.db.fetch_all(
             f"SELECT client_id, name, type_of_property, address, phone FROM {self.table} ORDER BY client_id"
         )
-        return [Client(dict(r)) for r in rows]
+        clients = [Client(dict(r)) for r in rows]
+        self.clients = clients
+        self._notify("read_all", clients)
+        return clients
 
     def write_all(self, file_to_write: str = None) -> None:
         raise NotImplementedError("write_all не используется для MyEntity_rep_DB")
@@ -410,6 +439,7 @@ class MyEntity_rep_DB(MyEntityRep):
             (client.name, client.type_of_property, client.address, client.phone),
         )
         client.client_id = row["client_id"]
+        self._notify("added", client)
 
     def replace_client(self, client_id: int, new_client: Client) -> None:
         rc = self.db.execute(
@@ -424,6 +454,8 @@ class MyEntity_rep_DB(MyEntityRep):
         )
         if rc == 0:
             raise ValueError(f"Клиент с ID {client_id} не найден")
+        new_client.client_id = client_id
+        self._notify("updated", new_client)
 
     def delete_client(self, client_id: int) -> None:
         rc = self.db.execute(
@@ -431,6 +463,7 @@ class MyEntity_rep_DB(MyEntityRep):
         )
         if rc == 0:
             raise ValueError(f"Клиент с ID {client_id} не найден")
+        self._notify("deleted", client)
 
     def get_count(self) -> int:
         row = self.db.fetch_one(f"SELECT COUNT(*) AS cnt FROM {self.table}")
@@ -636,70 +669,3 @@ class FilteredSortedFile(MyEntityRep):
     def get_count(self) -> int:
         clients = self._get_filtered_sorted_clients()
         return len(clients)
-
-
-try:
-    # db = DatabaseManager(
-    #     "dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432"
-    # )
-    # base_repo = MyEntity_rep_DB(db)
-
-    # def krasnodar_filter(c: Client) -> bool:
-    #     return "Краснодар" in c.address
-
-    # def name_key(c: Client):
-    #     return c.name
-
-    # def only_ip(c: Client) -> bool:
-    #     return "ИП" in c.type_of_property
-
-    # decorated_repo = FilteredSortedDB(
-    #     base_repo, filter_func=krasnodar_filter, sort_key=name_key, reverse=False
-    # )
-
-    # print("Всего клиентов в БД:", base_repo.get_count())
-    # print("Клиентов из Краснодара:", decorated_repo.get_count())
-
-    # page = decorated_repo.get_k_n_short_list(k=5, n=1)
-    # for short in page:
-    #     print(short)
-
-    # print("------------------------------------------")
-    # json_repo = MyEntity_rep_json("resources/clients.json")
-
-    # decorated_json = FilteredSortedFile(
-    #     json_repo, filter_func=only_ip, sort_key=name_key, reverse=False
-    # )
-
-    # print("Всего клиентов в файле:", json_repo.get_count())
-    # print("Клиентов-ИП:", decorated_json.get_count())
-
-    # page = decorated_json.get_k_n_short_list(k=5, n=1)
-    # for short in page:
-    #     print(short)
-
-    # print("------------------------------------------")
-
-    # yaml_repo = MyEntity_rep_yaml("resources/clients.yaml")
-
-    # decorated_json = FilteredSortedFile(
-    #     yaml_repo, filter_func=only_ip, sort_key=name_key, reverse=False
-    # )
-
-    # print("Всего клиентов в файле:", yaml_repo.get_count())
-    # print("Клиентов-ИП:", decorated_json.get_count())
-
-    # page = decorated_json.get_k_n_short_list(k=5, n=1)
-    # for short in page:
-    #     print(short)
-    db = DatabaseManager(
-        "dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432"
-    )
-    base_repo = MyEntity_rep_DB(db)
-    r_client = base_repo.get_by_id()
-    r_client.address = "Г. Москва"
-    base_repo.replace_client(r_client.client_id, r_client)
-except ValueError as e:
-    print("Ошибка:", e)
-except TypeError as e:
-    print("Ошибка типа:", e)
