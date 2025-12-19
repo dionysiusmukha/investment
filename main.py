@@ -1,30 +1,51 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 
 from Client import DatabaseManager, MyEntity_rep_DB
-from controllers import ClientController
+from controllers import ClientController, AddClientController
 
 app = FastAPI()
 
 
-def create_controller() -> ClientController:
+def create_repos_and_controllers() -> ClientController:
     db = DatabaseManager(
         "dbname=investment_db user=postgres password=den host=127.0.0.1 port=5432"
     )
 
     repo = MyEntity_rep_DB(db)
-    controller = ClientController(repo)
-    return controller
+    list_conroller = ClientController(repo)
+    add_controller = AddClientController(repo)
+    return list_conroller, add_controller
 
 
-controller = create_controller()
+list_controller, add_controller = create_repos_and_controllers()
 
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return controller.get_index_page()
+    return list_controller.get_index_page()
+
+
+@app.get("/client/new", response_class=HTMLResponse)
+def new_client_form():
+    return add_controller.get_from_page()
+
+
+@app.post("/client/new", response_class=HTMLResponse)
+def new_client_submit(
+        name: str = Form(...),
+        type_of_property: str = Form(...),
+        address: str = Form(...),
+        phone: str = Form(...),):
+
+    return add_controller.handle_submit(
+        name=name,
+        type_of_property=type_of_property,
+        address=address,
+        phone=phone,
+    )
 
 
 @app.get("/client/{client_id}", response_class=HTMLResponse)
 def client_details(client_id: int):
-    return controller.get_client_details_page(client_id)
+    return list_controller.get_client_details_page(client_id)
