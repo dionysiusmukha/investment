@@ -5,6 +5,24 @@ import views
 import re
 
 
+def validate_client_fields(values: dict[str, str]) -> tuple[dict[str, str], dict[str, str]]:
+    errors: dict[str, str] = {}
+    cleaned = dict(values)
+
+    for field, fn in [
+        ("name", Client.valid_client_name),
+        ("type_of_property", Client.valid_type_of_property),
+        ("address", Client.valid_address),
+        ("phone", Client.valid_phone),
+    ]:
+        try:
+            cleaned[field] = fn(values.get(field, ""))
+        except ValueError as e:
+            errors[field] = str(e)
+
+    return errors, cleaned
+
+
 class ClientController(RepoObserver):
     def __init__(self, repo: MyEntity_rep_DB):
         self.repo = repo
@@ -40,7 +58,12 @@ class AddClientController(RepoObserver):
         self._last_event = event_type
 
     def get_from_page(self) -> str:
-        return views.render_add_client_form()
+        return views.render_client_form(
+            title="Добавление клиента",
+            action_url="/client/new",
+            submit_text="Сохранить",
+            values={"name": "", "type_of_property": "", "address": "", "phone": ""},
+        )
 
     def handle_submit(
         self,
@@ -56,9 +79,15 @@ class AddClientController(RepoObserver):
             "phone": phone,
         }
 
-        errors, cleaned = self._validate(raw_values)
+        errors, cleaned = validate_client_fields(raw_values)
         if errors:
-            return views.render_add_client_form(errors=errors, values=raw_values)
+            return views.render_client_form(
+                title="Добавление клиента",
+                action_url="/client/new",
+                submit_text="Сохранить",
+                errors=errors,
+                values=raw_values,
+            )
 
         client = Client(
             0,
@@ -77,33 +106,10 @@ class AddClientController(RepoObserver):
                 values=raw_values
             )
 
-        return views.render_add_client_success(client)
-
-    def _validate(self, values: dict[str, str]) -> tuple[dict[str, str], dict[str, str]]:
-        errors: dict[str, str] = {}
-        cleaned = dict(values)
-
-        try:
-            cleaned["name"] = Client.valid_client_name(values.get("name", ""))
-        except ValueError as e:
-            errors["name"] = str(e)
-
-        try:
-            cleaned["type_of_property"] = Client.valid_type_of_property(values.get("type_of_property", ""))
-        except ValueError as e:
-            errors["type_of_property"] = str(e)
-
-        try:
-            cleaned["phone"] = Client.valid_phone(values.get("phone", ""))
-        except ValueError as e:
-            errors["phone"] = str(e)
-
-        try:
-            cleaned["address"] = Client.valid_address(values.get("address", ""))
-        except ValueError as e:
-            errors["address"] = str(e)
-
-        return errors, cleaned
+        return views.render_client_saved(
+            title="Клиент добавлен",
+            message=f'Клиент <b>{client.name}</b> добавлен с ID <b>{client.client_id}</b>.',
+        )
 
 
 class EditClientController(RepoObserver):
@@ -118,10 +124,7 @@ class EditClientController(RepoObserver):
     def get_form_page(self, client_id: int) -> str:
         client = self.repo.get_by_id(client_id)
         if client is None:
-            return views.render_layout(
-                "Ошибка",
-                f"<h1>Клиент не найден</h1><p><a href='javascript:window.close()'>Закрыть</a></p>",
-            )
+            return views.render_layout("Ошибка", "<h1>Клиент не найден</h1>")
 
         values = {
             "name": client.name,
@@ -129,7 +132,13 @@ class EditClientController(RepoObserver):
             "address": client.address,
             "phone": client.phone,
         }
-        return views.render_edit_client_form(client_id=client_id, values=values)
+        return views.render_client_form(
+            title="Редактирование клиента",
+            action_url=f"/client/{client_id}/edit",
+            submit_text="Сохранить",
+            values=values,
+            client_id=client_id,
+        )
 
     def handle_submit(
         self,
@@ -146,9 +155,16 @@ class EditClientController(RepoObserver):
             "phone": phone,
         }
 
-        errors, cleaned = self._validate(raw_values)
+        errors, cleaned = validate_client_fields(raw_values)
         if errors:
-            return views.render_edit_client_form(client_id=client_id, errors=errors, values=raw_values)
+            return views.render_client_form(
+                title="Редактирование клиента",
+                action_url=f"/client/{client_id}/edit",
+                submit_text="Сохранить",
+                errors=errors,
+                values=raw_values,
+                client_id=client_id,
+            )
 
         new_client = Client(
             client_id,
@@ -167,30 +183,7 @@ class EditClientController(RepoObserver):
                 values=raw_values,
             )
 
-        return views.render_edit_client_success(new_client)
-
-    def _validate(self, values: dict[str, str]) -> tuple[dict[str, str], dict[str, str]]:
-        errors: dict[str, str] = {}
-        cleaned = dict(values)
-
-        try:
-            cleaned["name"] = Client.valid_client_name(values.get("name", ""))
-        except ValueError as e:
-            errors["name"] = str(e)
-
-        try:
-            cleaned["type_of_property"] = Client.valid_type_of_property(values.get("type_of_property", ""))
-        except ValueError as e:
-            errors["type_of_property"] = str(e)
-
-        try:
-            cleaned["phone"] = Client.valid_phone(values.get("phone", ""))
-        except ValueError as e:
-            errors["phone"] = str(e)
-
-        try:
-            cleaned["address"] = Client.valid_address(values.get("address", ""))
-        except ValueError as e:
-            errors["address"] = str(e)
-
-        return errors, cleaned
+        return views.render_client_saved(
+            title="Изменения сохранены",
+            message=f"Клиент #{client_id} обновлён.",
+        )

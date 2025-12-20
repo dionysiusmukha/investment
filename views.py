@@ -78,79 +78,13 @@ def render_client_details(client: Client | None) -> str:
     return render_layout(f"Клиент {client.client_id}", body)
 
 
-def render_add_client_form(
-        errors: Mapping[str, str] | None = None,
-        values: Mapping[str, str] | None = None) -> str:
-
-    errors = errors or {}
-    values = values or {}
-
-    def val(field: str) -> str:
-        return values.get(field, "")
-
-    def err(field: str) -> str:
-        msg = errors.get(field)
-        return f'<div style="color:red;fint-size:1rem">{msg}</div>' if msg else ""
-
-    body = f"""
-        <h1>Добавлениее клиента</h1>
-            <form method="post" action="/client/new">
-                <label>ФИО:<br>
-                    <input type="text" name="name" value="{val('name')}" />
-                    {err('name')}
-                </label>
-                <br><br>
-                
-                <label>Форма собственности:<br>
-                    <input type="text" name="type_of_property" value="{val('type_of_property')}" />
-                    {err('type_of_property')}
-                </label>
-                <br><br>
-
-                <label>Адрес:<br>
-                    <input type="text" name="address" value="{val('address')}" />
-                    {err('address')}
-                </label>
-                <br><br>
-
-                <label>Телефон:<br>
-                    <input type="text" name="phone" value="{val('phone')}" />
-                    {err('phone')}
-                </label>
-                <br><br>
-
-                <button type="submit">Сохранить</button>
-            </form>
-
-            <p><a href="javascript:window.close()">Закрыть окно</a></p>
-        """
-    return render_layout("Новый клиент", body)
-
-
-def render_add_client_success(client: Client) -> str:
-    body = f"""
-        <h1>Клиент добавлен</h1>
-        <p>Клиент <b>{client.name}</b> успешно добавлен с ID <b>{client.client_id}</b>.</p>
-
-        <p>Это окно можно закрыть.</p>
-        <script>
-            if (window.opener && !window.opener.closed) {{
-                try {{
-                    window.opener.location.reload();
-                }} catch (e) {{}}
-            }}
-        </script>
-
-        <p><a href="javascript:window.close()">Закрыть окно</a></p>
-    """
-
-    return render_layout("Клиент добавлен", body)
-
-
-def render_edit_client_form(
-    client_id: int,
+def render_client_form(
+    title: str,
+    action_url: str,
+    submit_text: str,
     errors: dict[str, str] | None = None,
     values: dict[str, str] | None = None,
+    client_id: int | None = None,
 ) -> str:
     errors = errors or {}
     values = values or {}
@@ -167,11 +101,15 @@ def render_edit_client_form(
         f'<div style="color:red;margin-bottom:10px">{form_error}</div>' if form_error else ""
     )
 
+    header = f"<h1>{title}</h1>"
+    if client_id is not None:
+        header = f"<h1>{title} #{client_id}</h1>"
+
     body = f"""
-    <h1>Редактирование клиента #{client_id}</h1>
+    {header}
     {form_error_html}
 
-    <form method="post" action="/client/{client_id}/edit">
+    <form method="post" action="{action_url}">
     <label>ФИО:<br>
         <input type="text" name="name" value="{val('name')}" />
         {err('name')}
@@ -196,18 +134,18 @@ def render_edit_client_form(
     </label>
     <br><br>
 
-    <button type="submit">Сохранить</button>
+    <button type="submit">{submit_text}</button>
     </form>
 
     <p><a href="javascript:window.close()">Закрыть окно</a></p>
     """
-    return render_layout("Редактирование клиента", body)
+    return render_layout(title, body)
 
 
-def render_edit_client_success(client: Client) -> str:
+def render_client_saved(title: str, message: str) -> str:
     body = f"""
-    <h1>Изменения сохранены</h1>
-    <p>Клиент #{client.client_id} обновлён.</p>
+    <h1>{title}</h1>
+    <p>{message}</p>
 
     <script>
     if (window.opener && !window.opener.closed) {{
@@ -217,4 +155,4 @@ def render_edit_client_success(client: Client) -> str:
 
     <p><a href="javascript:window.close()">Закрыть окно</a></p>
     """
-    return render_layout("Клиент обновлён", body)
+    return render_layout(title, body)
