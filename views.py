@@ -9,7 +9,6 @@ def render_layout(title: str, body: str) -> str:
         <meta charset="utf-8" />
         <title>{title}</title>
         
-        <link rel="stylesheet" href="/static/css/style.css">
          <script>
             function refreshOpener() {{
             if (window.opener && !window.opener.closed) {{
@@ -33,6 +32,7 @@ def render_layout(title: str, body: str) -> str:
             refreshOpener();
             }});
         </script>
+        <link rel="stylesheet" href="/static/css/style.css">
     </head>
     <body>
         {body}
@@ -41,8 +41,40 @@ def render_layout(title: str, body: str) -> str:
     """
 
 
-def render_client_list(clients: Iterable[ClientShort]) -> str:
+def render_client_list(
+    clients: Iterable[ClientShort],
+    filters: Mapping[str, str] | None = None,
+) -> str:
     rows = []
+    filters = filters or {}
+    type_val = filters.get("type_of_property", "")
+    name_q = filters.get("name_q", "")
+    phone_q = filters.get("phone_q", "")
+
+    filter_form = f"""
+    <form method="get" action="/" style="margin-bottom:12px;">
+    <label>Форма собственности:
+        <select name="type_of_property">
+        <option value="" {"selected" if type_val == "" else ""}>Все</option>
+        <option value="ООО" {"selected" if type_val == "ООО" else ""}>ООО</option>
+        <option value="ЗАО" {"selected" if type_val == "ЗАО" else ""}>ЗАО</option>
+        <option value="ОАО" {"selected" if type_val == "ОАО" else ""}>ОАО</option>
+        <option value="ИП"  {"selected" if type_val == "ИП" else ""}>ИП</option>
+        </select>
+    </label>
+
+    <label style="margin-left:10px;">ФИО содержит:
+        <input name="name_q" value="{name_q}">
+    </label>
+
+    <label style="margin-left:10px;">Телефон содержит:
+        <input name="phone_q" value="{phone_q}">
+    </label>
+
+    <button type="submit" style="margin-left:10px;">Фильтровать</button>
+    <a href="/" style="margin-left:10px;">Сброс</a>
+    </form>
+    """
 
     for c in clients:
         rows.append(
@@ -64,6 +96,8 @@ def render_client_list(clients: Iterable[ClientShort]) -> str:
         <p>
             <a href="#" onclick="window.open('/client/new','_blank'); return false;">Добавить клиента</a>
         </p>
+
+        {filter_form}
 
         <table>
             <thead>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -26,8 +26,16 @@ list_controller, add_controller, edit_controller, delete_controller = create_rep
 
 
 @app.get("/", response_class=HTMLResponse)
-def index():
-    return list_controller.get_index_page()
+def index(
+    type_of_property: str | None = Query(default=None),
+    name_q: str | None = Query(default=None),
+    phone_q: str | None = Query(default=None),
+):
+    return list_controller.get_index_page(
+        type_of_property=type_of_property,
+        name_q=name_q,
+        phone_q=phone_q,
+    )
 
 
 @app.get("/client/new", response_class=HTMLResponse)

@@ -599,6 +599,9 @@ class FilteredSortedDB(MyEntityRep):
         clients = self._get_filtered_sorted_clients()
         return len(clients)
 
+    def get_filtered_sorted_list(self) -> List[Client]:
+        return self._get_filtered_sorted_clients()
+
 
 class FilteredSortedFile(MyEntityRep):
     def __init__(
@@ -669,3 +672,6 @@ class FilteredSortedFile(MyEntityRep):
     def get_count(self) -> int:
         clients = self._get_filtered_sorted_clients()
         return len(clients)
+
+    def get_filtered_sorted_list(self) -> List[Client]:
+        return self._get_filtered_sorted_clients()

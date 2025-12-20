@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict
 
-from Client import Client, ClientShort, MyEntity_rep_DB, RepoObserver
+from Client import Client, ClientShort, MyEntity_rep_DB, RepoObserver, FilteredSortedDB
 import views
 import re
 
@@ -36,12 +36,42 @@ class ClientController(RepoObserver):
         if event_type == "read_all":
             self._last_clients = data
 
-    def get_index_page(self) -> str:
-        self._last_clients = None
-        self.repo.read_all()
-        clients = self._last_clients or []
+    def get_index_page(
+        self,
+        type_of_property: str | None = None,
+        name_q: str | None = None,
+        phone_q: str | None = None,
+    ) -> str:
+        type_of_property = (type_of_property or "").strip()
+        name_q = (name_q or "").strip()
+        phone_q = (phone_q or "").strip()
+
+        def filter_func(c: Client) -> bool:
+            if type_of_property and type_of_property.lower() not in c.type_of_property.lower():
+                return False
+            if name_q and name_q.lower() not in c.name.lower():
+                return False
+            if phone_q and phone_q not in c.phone:
+                return False
+            return True
+
+        if not (type_of_property or name_q or phone_q):
+            self._last_clients = None
+            self.repo.read_all()
+            clients = self._last_clients or []
+        else:
+            decorated = FilteredSortedDB(self.repo, filter_func=filter_func)
+            clients = decorated.get_filtered_sorted_list()
+
         shorts = [ClientShort(c) for c in clients]
-        return views.render_client_list(shorts)
+        return views.render_client_list(
+            shorts,
+            filters={
+                "type_of_property": type_of_property,
+                "name_q": name_q,
+                "phone_q": phone_q,
+            },
+        )
 
     def get_client_details_page(self, client_id: int) -> str:
         client = self.repo.get_by_id(client_id)
