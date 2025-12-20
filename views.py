@@ -10,6 +10,29 @@ def render_layout(title: str, body: str) -> str:
         <title>{title}</title>
         
         <link rel="stylesheet" href="/static/css/style.css">
+         <script>
+            function refreshOpener() {{
+            if (window.opener && !window.opener.closed) {{
+                try {{
+                window.opener.location.reload();
+                return true;
+                }} catch (e) {{
+                return false;
+                }}
+            }}
+            return false;
+            }}
+
+            function closeAndRefresh() {{
+            refreshOpener();
+            window.close();
+            }}
+
+            // (крестик, Alt+F4) — попробуем обновить opener.
+            window.addEventListener("beforeunload", function () {{
+            refreshOpener();
+            }});
+        </script>
     </head>
     <body>
         {body}
@@ -29,8 +52,9 @@ def render_client_list(clients: Iterable[ClientShort]) -> str:
             f"<td>{c.type_of_property}</td>"
             f"<td>{c.phone}</td>"
             f"<td>"
-            f"<a href='/client/{c.client_id}' target='_blank'>Подробнее</a> | "
-            f"<a href='/client/{c.client_id}/edit' target='_blank'>Редактировать</a>"
+            f"<a href='#' onclick=\"window.open('/client/{c.client_id}','_blank'); return false;\">Подробнее</a> | "
+            f"<a href='#' onclick=\"window.open('/client/{c.client_id}/edit','_blank'); return false;\">Редактировать</a> | "
+            f"<a href='#' onclick=\"window.open('/client/{c.client_id}/delete','_blank'); return false;\" style='color:#c00'>Удалить</a>"
             f"</td>"
         )
 
@@ -38,7 +62,7 @@ def render_client_list(clients: Iterable[ClientShort]) -> str:
         <h1>Список клиентов</h1>
 
         <p>
-            <a href="/client/new" target="_blank">Добавить клиента</a>
+            <a href="#" onclick="window.open('/client/new','_blank'); return false;">Добавить клиента</a>
         </p>
 
         <table>
@@ -137,7 +161,7 @@ def render_client_form(
     <button type="submit">{submit_text}</button>
     </form>
 
-    <p><a href="javascript:window.close()">Закрыть окно</a></p>
+    <p><a href="javascript:closeAndRefresh()">Закрыть окно</a></p>
     """
     return render_layout(title, body)
 
@@ -153,6 +177,50 @@ def render_client_saved(title: str, message: str) -> str:
     }}
     </script>
 
-    <p><a href="javascript:window.close()">Закрыть окно</a></p>
+    <p><a href="javascript:closeAndRefresh()">Закрыть окно</a></p>
     """
     return render_layout(title, body)
+
+
+def render_delete_confirm(client: Client | None) -> str:
+    if client is None:
+        return render_layout(
+            "Ошибка",
+            "<h1>Клиент не найден</h1><p><a href='javascript:closeAndRefresh()'>Закрыть</a></p>",
+        )
+
+    body = f"""
+    <h1>Удаление клиента #{client.client_id}</h1>
+
+    <p>Вы точно хотите удалить клиента:</p>
+    <ul>
+    <li><b>ФИО:</b> {client.name}</li>
+    <li><b>Форма:</b> {client.type_of_property}</li>
+    <li><b>Адрес:</b> {client.address}</li>
+    <li><b>Телефон:</b> {client.phone}</li>
+    </ul>
+
+    <form method="post" action="/client/{client.client_id}/delete">
+    <button type="submit" style="background:#c00;color:#fff;padding:6px 12px;border:0;cursor:pointer;">
+        Удалить
+    </button>
+    <a href="javascript:window.close()" style="margin-left:12px">Отмена</a>
+    </form>
+    """
+    return render_layout("Удаление клиента", body)
+
+
+def render_delete_success(client_id: int) -> str:
+    body = f"""
+    <h1>Клиент удалён</h1>
+    <p>Клиент #{client_id} удалён.</p>
+
+    <script>
+    if (window.opener && !window.opener.closed) {{
+        try {{ window.opener.location.reload(); }} catch(e) {{}}
+    }}
+    </script>
+
+    <p><a href="javascript:closeAndRefresh()">Закрыть окно</a></p>
+    """
+    return render_layout("Удалено", body)

@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from Client import DatabaseManager, MyEntity_rep_DB
-from controllers import ClientController, AddClientController, EditClientController
+from controllers import ClientController, AddClientController, EditClientController, DeleteClientController
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -18,10 +18,11 @@ def create_repos_and_controllers() -> ClientController:
     list_controller = ClientController(repo)
     add_controller = AddClientController(repo)
     edit_controller = EditClientController(repo)
-    return list_controller, add_controller, edit_controller
+    delete_controller = DeleteClientController(repo)
+    return list_controller, add_controller, edit_controller, delete_controller
 
 
-list_controller, add_controller, edit_controller = create_repos_and_controllers()
+list_controller, add_controller, edit_controller, delete_controller = create_repos_and_controllers()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -69,6 +70,16 @@ def edit_client_submit(
         address=address,
         phone=phone,
     )
+
+
+@app.get("/client/{client_id}/delete", response_class=HTMLResponse)
+def delete_confirm(client_id: int):
+    return delete_controller.get_confirm_page(client_id)
+
+
+@app.post("/client/{client_id}/delete", response_class=HTMLResponse)
+def delete_submit(client_id: int):
+    return delete_controller.handle_delete(client_id)
 
 
 @app.get("/client/{client_id}", response_class=HTMLResponse)

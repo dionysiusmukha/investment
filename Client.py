@@ -463,7 +463,7 @@ class MyEntity_rep_DB(MyEntityRep):
         )
         if rc == 0:
             raise ValueError(f"Клиент с ID {client_id} не найден")
-        self._notify("deleted", client)
+        self._notify("deleted", self.client)
 
     def get_count(self) -> int:
         row = self.db.fetch_one(f"SELECT COUNT(*) AS cnt FROM {self.table}")

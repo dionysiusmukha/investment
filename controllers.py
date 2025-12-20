@@ -187,3 +187,27 @@ class EditClientController(RepoObserver):
             title="Изменения сохранены",
             message=f"Клиент #{client_id} обновлён.",
         )
+
+
+class DeleteClientController(RepoObserver):
+    def __init__(self, repo: MyEntity_rep_DB):
+        self.repo = repo
+        self.repo.attach(self)
+        self._last_event: Optional[str] = None
+
+    def update(self, event_type: str, data):
+        self._last_event = event_type
+
+    def get_confirm_page(self, client_id: int) -> str:
+        client = self.repo.get_by_id(client_id)
+        return views.render_delete_confirm(client)
+
+    def handle_delete(self, client_id: int) -> str:
+        try:
+            self.repo.delete_client(client_id)
+        except ValueError as e:
+            return views.render_layout(
+                "Ошибка удаления",
+                f"<h1>Ошибка</h1><p>{e}</p><p><a href='javascript:window.close()'>Закрыть</a></p>",
+            )
+        return views.render_delete_success(client_id)
