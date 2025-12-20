@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from Client import DatabaseManager, MyEntity_rep_DB
-from controllers import ClientController, AddClientController
+from controllers import ClientController, AddClientController, EditClientController
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 def create_repos_and_controllers() -> ClientController:
@@ -13,12 +15,13 @@ def create_repos_and_controllers() -> ClientController:
     )
 
     repo = MyEntity_rep_DB(db)
-    list_conroller = ClientController(repo)
+    list_controller = ClientController(repo)
     add_controller = AddClientController(repo)
-    return list_conroller, add_controller
+    edit_controller = EditClientController(repo)
+    return list_controller, add_controller, edit_controller
 
 
-list_controller, add_controller = create_repos_and_controllers()
+list_controller, add_controller, edit_controller = create_repos_and_controllers()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -39,6 +42,28 @@ def new_client_submit(
         phone: str = Form(...),):
 
     return add_controller.handle_submit(
+        name=name,
+        type_of_property=type_of_property,
+        address=address,
+        phone=phone,
+    )
+
+
+@app.get("/client/{client_id}/edit", response_class=HTMLResponse)
+def edit_client_form(client_id: int):
+    return edit_controller.get_form_page(client_id)
+
+
+@app.post("/client/{client_id}/edit", response_class=HTMLResponse)
+def edit_client_submit(
+    client_id: int,
+    name: str = Form(...),
+    type_of_property: str = Form(...),
+    address: str = Form(...),
+    phone: str = Form(...),
+):
+    return edit_controller.handle_submit(
+        client_id=client_id,
         name=name,
         type_of_property=type_of_property,
         address=address,

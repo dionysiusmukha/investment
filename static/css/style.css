@@ -1,0 +1,35 @@
+body {
+  font-family: "JetBrains Mono";
+  margin: 20px;
+  background-color: #14342b;
+  color: #eef0f2;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background-color: #2d2d2c;
+}
+
+th,
+td {
+  border: 1px solid #ccc;
+  padding: 8px 8px;
+}
+
+a {
+  text-decoration: none;
+  color: #cd533b;
+  background-color: #eef0f2;
+  border-radius: 5px;
+  padding: 2px;
+}
+
+button {
+  text-decoration: none;
+  cursor: pointer;
+  color: #cd533b;
+  background-color: #eef0f2;
+  border-radius: 5px;
+  padding: 2px;
+}
