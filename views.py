@@ -63,6 +63,10 @@ def render_client_list(
     form_action = build_url("/", {"storage": storage})
 
     filter_form = f"""
+        <p>
+            <a href="/securities?storage={storage}">Ценные бумаги</a>
+        </p>
+
         <form method="get" action="/" style="margin-bottom:12px;">
 
         <input type="hidden" name="storage" value="{storage}">

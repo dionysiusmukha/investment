@@ -2,7 +2,7 @@
   client_id: 3
   name: Иванов Сергей Николаевич
   phone: '79991112233'
-  type_of_property: ИП Иванов
+  type_of_property: ИП YAML
 - address: г. Екатеринбург, ул. Победы, 45
   client_id: 4
   name: Сидоров Алексей Павлович

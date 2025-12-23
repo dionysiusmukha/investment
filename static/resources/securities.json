@@ -1,0 +1,14 @@
+[
+    {
+        "security_id": 1,
+        "name": "Газпром",
+        "security_type": "Акция",
+        "income": 12.5
+    },
+    {
+        "security_id": 2,
+        "name": "HeadHunter",
+        "security_type": "Акция",
+        "income": 17.0
+    }
+]

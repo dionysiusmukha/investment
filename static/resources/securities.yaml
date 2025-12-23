@@ -1,0 +1,8 @@
+- income: 12.5
+  name: Газпром
+  security_id: 1
+  security_type: Акция
+- income: 0.7
+  name: Озон
+  security_id: 2
+  security_type: Акция
