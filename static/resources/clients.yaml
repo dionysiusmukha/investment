@@ -1,13 +1,3 @@
-- address: Москва, ул. Ленина, 10
-  client_id: 1
-  name: Тургенев Иван Сергеевич
-  phone: '79991233317'
-  type_of_property: ООО Муму
-- address: г. Москва
-  client_id: 2
-  name: Конев Иван Степанович
-  phone: '79997777777'
-  type_of_property: ЗАО Ставка ВГК
 - address: г. Тула, пр. Ленина, 22
   client_id: 3
   name: Иванов Сергей Николаевич
@@ -98,3 +88,8 @@
   name: Семенова Ольга Викторовна
   phone: '79998880055'
   type_of_property: ООО Кедр
+- address: г. Москва
+  client_id: 21
+  name: Иван Олег Олегович
+  phone: '79991233319'
+  type_of_property: ООО Зоология

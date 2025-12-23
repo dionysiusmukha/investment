@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict
-
-from Client import Client, ClientShort, MyEntity_rep_DB, RepoObserver, FilteredSortedDB
+from filtered_repo_factory import create_filtered_repo
+from Client import Client, ClientShort, MyEntityRep, RepoObserver, FilteredSortedFile
 import views
 import re
 
@@ -24,10 +24,9 @@ def validate_client_fields(values: dict[str, str]) -> tuple[dict[str, str], dict
 
 
 class ClientController(RepoObserver):
-    def __init__(self, repo: MyEntity_rep_DB):
+    def __init__(self, repo: MyEntityRep):
         self.repo = repo
         self.repo.attach(self)
-
         self._last_clients: Optional[List[Client]] = None
         self._last_event: Optional[str] = None
 
@@ -41,45 +40,59 @@ class ClientController(RepoObserver):
         type_of_property: str | None = None,
         name_q: str | None = None,
         phone_q: str | None = None,
+        sort_by: str | None = None,
+        order: str | None = None,
+        storage: str = "db",
     ) -> str:
+
         type_of_property = (type_of_property or "").strip()
         name_q = (name_q or "").strip()
         phone_q = (phone_q or "").strip()
+        sort_by = (sort_by or "").strip()
+        order = (order or "asc").strip().lower()
 
-        def filter_func(c: Client) -> bool:
-            if type_of_property and type_of_property.lower() not in c.type_of_property.lower():
-                return False
-            if name_q and name_q.lower() not in c.name.lower():
-                return False
-            if phone_q and phone_q not in c.phone:
-                return False
-            return True
+        use_filter_or_sort = any([
+            type_of_property,
+            name_q,
+            phone_q,
+            sort_by,
+        ])
 
-        if not (type_of_property or name_q or phone_q):
+        if use_filter_or_sort:
+            filtered_repo = create_filtered_repo(self.repo)
+            clients = filtered_repo.get_list(
+                type_of_property=type_of_property,
+                name_q=name_q,
+                phone_q=phone_q,
+                sort_by=sort_by,
+                order=order,
+            )
+        else:
             self._last_clients = None
             self.repo.read_all()
             clients = self._last_clients or []
-        else:
-            decorated = FilteredSortedDB(self.repo, filter_func=filter_func)
-            clients = decorated.get_filtered_sorted_list()
 
         shorts = [ClientShort(c) for c in clients]
+
         return views.render_client_list(
             shorts,
             filters={
                 "type_of_property": type_of_property,
                 "name_q": name_q,
                 "phone_q": phone_q,
+                "sort_by": sort_by,
+                "order": order,
             },
+            storage=storage,
         )
 
-    def get_client_details_page(self, client_id: int) -> str:
+    def get_client_details_page(self, client_id: int, storage: str = "db") -> str:
         client = self.repo.get_by_id(client_id)
-        return views.render_client_details(client)
+        return views.render_client_details(client, storage=storage)
 
 
 class AddClientController(RepoObserver):
-    def __init__(self, repo: MyEntity_rep_DB):
+    def __init__(self, repo: MyEntityRep):
         self.repo = repo
         self.repo.attach(self)
         self._last_event: Optional[str] = None
@@ -87,10 +100,10 @@ class AddClientController(RepoObserver):
     def update(self, event_type: str, data):
         self._last_event = event_type
 
-    def get_from_page(self) -> str:
+    def get_form_page(self, storage: str = "db") -> str:
         return views.render_client_form(
             title="Добавление клиента",
-            action_url="/client/new",
+            action_url=f"/client/new?storage={storage}",
             submit_text="Сохранить",
             values={"name": "", "type_of_property": "", "address": "", "phone": ""},
         )
@@ -101,6 +114,7 @@ class AddClientController(RepoObserver):
         type_of_property: str,
         address: str,
         phone: str,
+        storage: str = "db",
     ) -> str:
         raw_values = {
             "name": name,
@@ -113,7 +127,7 @@ class AddClientController(RepoObserver):
         if errors:
             return views.render_client_form(
                 title="Добавление клиента",
-                action_url="/client/new",
+                action_url=f"/client/new?storage={storage}",
                 submit_text="Сохранить",
                 errors=errors,
                 values=raw_values,
@@ -143,7 +157,7 @@ class AddClientController(RepoObserver):
 
 
 class EditClientController(RepoObserver):
-    def __init__(self, repo: MyEntity_rep_DB):
+    def __init__(self, repo: MyEntityRep):
         self.repo = repo
         self.repo.attach(self)
         self._last_event: Optional[str] = None
@@ -151,7 +165,7 @@ class EditClientController(RepoObserver):
     def update(self, event_type: str, data):
         self._last_event = event_type
 
-    def get_form_page(self, client_id: int) -> str:
+    def get_form_page(self, client_id: int, storage: str = "db") -> str:
         client = self.repo.get_by_id(client_id)
         if client is None:
             return views.render_layout("Ошибка", "<h1>Клиент не найден</h1>")
@@ -164,7 +178,7 @@ class EditClientController(RepoObserver):
         }
         return views.render_client_form(
             title="Редактирование клиента",
-            action_url=f"/client/{client_id}/edit",
+            action_url=f"/client/{client_id}/edit?storage={storage}",
             submit_text="Сохранить",
             values=values,
             client_id=client_id,
@@ -177,6 +191,7 @@ class EditClientController(RepoObserver):
         type_of_property: str,
         address: str,
         phone: str,
+        storage: str = "db",
     ) -> str:
         raw_values = {
             "name": name,
@@ -189,7 +204,7 @@ class EditClientController(RepoObserver):
         if errors:
             return views.render_client_form(
                 title="Редактирование клиента",
-                action_url=f"/client/{client_id}/edit",
+                action_url=f"/client/{client_id}/edit?storage={storage}",
                 submit_text="Сохранить",
                 errors=errors,
                 values=raw_values,
@@ -220,7 +235,7 @@ class EditClientController(RepoObserver):
 
 
 class DeleteClientController(RepoObserver):
-    def __init__(self, repo: MyEntity_rep_DB):
+    def __init__(self, repo: MyEntityRep):
         self.repo = repo
         self.repo.attach(self)
         self._last_event: Optional[str] = None
@@ -228,11 +243,11 @@ class DeleteClientController(RepoObserver):
     def update(self, event_type: str, data):
         self._last_event = event_type
 
-    def get_confirm_page(self, client_id: int) -> str:
+    def get_confirm_page(self, client_id: int, storage: str = "db") -> str:
         client = self.repo.get_by_id(client_id)
-        return views.render_delete_confirm(client)
+        return views.render_delete_confirm(client, storage=storage)
 
-    def handle_delete(self, client_id: int) -> str:
+    def handle_delete(self, client_id: int, storage: str = "db") -> str:
         try:
             self.repo.delete_client(client_id)
         except ValueError as e:

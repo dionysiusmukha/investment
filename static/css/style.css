@@ -32,5 +32,14 @@ button {
   background-color: #eef0f2;
   border-radius: 5px;
   padding: 2px;
+  height: 30px;
+}
+
+input {
+  border-radius: 20px;
   height: 20px;
+}
+
+.sort-div {
+  margin-top: 10px;
 }

@@ -270,6 +270,7 @@ class MyEntityRep(ABC):
 
         client.client_id = new_id
         self.clients.append(client)
+        self.write_all()
         self._notify("added", client)
 
     def replace_client(self, client_id: int, new_client: Client) -> None:
@@ -280,6 +281,7 @@ class MyEntityRep(ABC):
             if c.client_id == client_id:
                 new_client.client_id = c.client_id
                 self.clients[i] = new_client
+                self.write_all()
                 self._notify("updated", new_client)
                 return
         raise ValueError(f"Клиент с ID {client_id} не найден")
@@ -288,6 +290,7 @@ class MyEntityRep(ABC):
         for i, c in enumerate(self.clients):
             if c.client_id == client_id:
                 removed = self.clients.pop(i)
+                self.write_all()
                 self._notify("deleted", removed)
                 return
         raise ValueError(f"Клиент с ID {client_id} не найден")
@@ -305,6 +308,9 @@ class MyEntityRep(ABC):
         self_clients = sorted(self.clients, key=lambda c: c.client_id)
         other_clients = sorted(other.clients, key=lambda c: c.client_id)
         return self_clients == other_clients
+
+    def _after_read_all(self):
+        self._notify("read_all", self.clients)
 
 
 class MyEntity_rep_json(MyEntityRep):
@@ -327,6 +333,7 @@ class MyEntity_rep_json(MyEntityRep):
             clients.append(Client(item))
 
         self.clients = clients
+        self._notify("read_all", self.clients)
         return self.clients
 
     def write_all(self, file_to_write: str = None) -> None:
@@ -374,6 +381,7 @@ class MyEntity_rep_yaml(MyEntityRep):
             clients.append(Client(item))
 
         self.clients = clients
+        self._notify("read_all", self.clients)
         return self.clients
 
     def write_all(self, file_to_write: str = None) -> None:
@@ -412,7 +420,7 @@ class MyEntity_rep_DB(MyEntityRep):
         return clients
 
     def write_all(self, file_to_write: str = None) -> None:
-        raise NotImplementedError("write_all не используется для MyEntity_rep_DB")
+        pass
 
     def get_by_id(self, client_id: int) -> Client | None:
         if client_id <= 0:
@@ -602,6 +610,47 @@ class FilteredSortedDB(MyEntityRep):
     def get_filtered_sorted_list(self) -> List[Client]:
         return self._get_filtered_sorted_clients()
 
+    def get_list(
+        self,
+        type_of_property: str = "",
+        name_q: str = "",
+        phone_q: str = "",
+        sort_by: str = "",
+        order: str = "asc",
+    ) -> List[Client]:
+        type_of_property = (type_of_property or "").strip().lower()
+        name_q = (name_q or "").strip().lower()
+        phone_q = (phone_q or "").strip()
+        sort_by = (sort_by or "").strip().lower()
+        order = (order or "asc").strip().lower()
+
+        reverse = order == "desc"
+
+        def filter_func(c: Client) -> bool:
+            if type_of_property and type_of_property not in c.type_of_property.lower():
+                return False
+            if name_q and name_q not in c.name.lower():
+                return False
+            if phone_q and phone_q not in c.phone:
+                return False
+            return True
+
+        sort_key = None
+        if sort_by in ("id", "client_id"):
+            def sort_key(c): return c.client_id
+        elif sort_by == "name":
+            def sort_key(c): return c.name.lower()
+        elif sort_by in ("type", "type_of_property"):
+            def sort_key(c): return c.type_of_property.lower()
+        elif sort_by == "phone":
+            def sort_key(c): return c.phone
+
+        self.filter_func = filter_func if (type_of_property or name_q or phone_q) else None
+        self.sort_key = sort_key
+        self.reverse = reverse
+
+        return self.get_filtered_sorted_list()
+
 
 class FilteredSortedFile(MyEntityRep):
     def __init__(
@@ -617,7 +666,7 @@ class FilteredSortedFile(MyEntityRep):
         self.reverse = reverse
 
         self.filename = getattr(base_repo, "filename", "")
-        self.clients: List[Client] = base_repo.clients
+        self.clients: List[Client] = []
 
     def read_all(self) -> List[Client]:
         clients = self._base_repo.read_all()
@@ -675,3 +724,44 @@ class FilteredSortedFile(MyEntityRep):
 
     def get_filtered_sorted_list(self) -> List[Client]:
         return self._get_filtered_sorted_clients()
+
+    def get_list(
+        self,
+        type_of_property: str = "",
+        name_q: str = "",
+        phone_q: str = "",
+        sort_by: str = "",
+        order: str = "asc",
+    ) -> List[Client]:
+        type_of_property = (type_of_property or "").strip().lower()
+        name_q = (name_q or "").strip().lower()
+        phone_q = (phone_q or "").strip()
+        sort_by = (sort_by or "").strip().lower()
+        order = (order or "asc").strip().lower()
+
+        reverse = order == "desc"
+
+        def filter_func(c: Client) -> bool:
+            if type_of_property and type_of_property not in c.type_of_property.lower():
+                return False
+            if name_q and name_q not in c.name.lower():
+                return False
+            if phone_q and phone_q not in c.phone:
+                return False
+            return True
+
+        sort_key = None
+        if sort_by in ("id", "client_id"):
+            def sort_key(c): return c.client_id
+        elif sort_by == "name":
+            def sort_key(c): return c.name.lower()
+        elif sort_by in ("type", "type_of_property"):
+            def sort_key(c): return c.type_of_property.lower()
+        elif sort_by == "phone":
+            def sort_key(c): return c.phone
+
+        self.filter_func = filter_func if (type_of_property or name_q or phone_q) else None
+        self.sort_key = sort_key
+        self.reverse = reverse
+
+        return self.get_filtered_sorted_list()
